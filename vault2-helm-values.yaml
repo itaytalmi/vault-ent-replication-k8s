@@ -1,0 +1,79 @@
+global:
+  tlsDisable: false
+
+server:
+  image:
+    repository: hashicorp/vault-enterprise
+    tag: 1.18.3-ent
+  service:
+    enabled: true
+    type: LoadBalancer
+    active:
+      enabled: true
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: vault2-active.demo.cloudnativeapps.cloud
+
+  enterpriseLicense:
+    secretName: vault-lic
+
+  volumes:
+    - name: tls-server
+      secret:
+        secretName: tls-server
+    - name: tls-ca
+      secret:
+        secretName: tls-ca
+
+  volumeMounts:
+    - name: tls-server
+      mountPath: /vault/userconfig/tls-server
+    - name: tls-ca
+      mountPath: /vault/userconfig/tls-ca
+
+  extraEnvironmentVars:
+    VAULT_CACERT: /vault/userconfig/tls-ca/ca.crt
+
+  standalone:
+    enabled: false
+
+  ha:
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+
+      config: |
+        ui = true
+
+        api_addr = "https://vault2.demo.cloudnativeapps.cloud:8200"
+        cluster_addr = "https://vault2.demo.cloudnativeapps.cloud:8201"
+        cluster_name = "vault-cluster-2"
+
+        listener "tcp" {
+          address = "[::]:8200"
+          cluster_address = "[::]:8201"
+          tls_cert_file = "/vault/userconfig/tls-server/tls.crt"
+          tls_key_file = "/vault/userconfig/tls-server/tls.key"
+        }
+
+        service_registration "kubernetes" {}
+
+        storage "raft" {
+          path = "/vault/data"
+
+          retry_join {
+            auto_join = "provider=k8s label_selector=\"app.kubernetes.io/name=vault,component=server\" namespace=\"{{ .Release.Namespace }}\""
+            leader_tls_servername = "vault"
+            leader_ca_cert_file = "/vault/userconfig/tls-ca/ca.crt"
+            leader_client_key_file = "/vault/userconfig/tls-server/tls.key"
+            leader_client_cert_file = "/vault/userconfig/tls-server/tls.crt"
+            auto_join_scheme = "https"
+          }
+        }
+
+ui:
+  enabled: true
+  serviceType: LoadBalancer
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: vault2.demo.cloudnativeapps.cloud

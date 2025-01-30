@@ -1,2 +1,3 @@
 # vault-ent-replication-k8s
-Vault Enterprise Replication on Kubernetes
+
+This repository serves my blog post on [Vault Enterprise Replication on Kubernetes](https://cloudnativeapps.blog/vault-enterprise-replication-on-kubernetes).
